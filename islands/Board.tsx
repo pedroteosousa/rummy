@@ -1,39 +1,28 @@
 import { useEffect, useRef, useState } from "preact/hooks";
-import { Position, Tile, Game, Color } from "../utils/types.ts";
-import { getHand } from "../utils/supabaseClient.ts";
-import { tileFromId } from "../utils/helper.ts";
+import { Position, Tile, Color } from "../lib/types.ts";
+import { getHand } from "../lib/supabaseClient.ts";
+import { tileFromId } from "../lib/helper.ts";
 
-interface GridSize {
+interface GridShape {
     rows: number
     columns: number
-    offset: Position
 }
 
+type AreaType = 'hand' | 'table'
+
 interface Area {
+    type: AreaType
     size: {
         width: number
         height: number
     }
     location: Position
+    grid: GridShape
 }
 
-function calculateGridSize(tiles: Tile[]): GridSize {
-    if (tiles.length == 0) return { rows: 3, columns: 3, offset: { x: 0, y: 0 } }
-    let minX = tiles[0].position!.x, maxX = tiles[0].position!.x, minY = tiles[0].position!.y, maxY = tiles[0].position!.y;
-    tiles.forEach((tile) => {
-        minX = Math.min(tile.position!.x, minX) 
-        maxX = Math.max(tile.position!.x, maxX) 
-        minY = Math.min(tile.position!.y, minY) 
-        maxY = Math.max(tile.position!.y, maxY) 
-    })
-    return {
-        rows: maxY - minY + 3,
-        columns: maxX - minX + 3,
-        offset: {
-            x: minX - 1,
-            y: minY - 1,
-        }
-    }
+interface GridPosition {
+    position: Position
+    areaType: AreaType
 }
 
 export interface Props {
@@ -42,182 +31,72 @@ export interface Props {
 
 export default function Board({ gameId }: Props) {
     const canvasRef = useRef<HTMLCanvasElement>(null)
-    const [isTileMoving, setIsTileMoving] = useState<Map<string, boolean>>(new Map())
-    const [tiles, setTiles] = useState<Tile[]>([])
-    const [gridSize, setGridSize] = useState<GridSize>({ rows: 0, columns: 0, offset: { x: 0, y: 0 }})
-    const [cellSize, setCellSize] = useState<number>(0)
-    const [hand, setHand] = useState<Tile[]>([])
-    const [handArea, setHandArea] = useState<Area>({ size: { width: 0, height: 0 }, location: { x: 0, y: 0 }})
-    const [handCellSize, setHandCellSize] = useState<number>(0)
+    const [tiles, setTiles] = useState<Record<AreaType, Tile[]>>({
+        'hand': [],
+        'table': [],
+    })
+    const [dragging, setDragging] = useState<Tile>()
+    const [draggingPosition, setDraggingPosition] = useState<Position>()
 
     useEffect(() => {
-        getHand(gameId).then(data => setHand(data.map((id, index) => {
-            const tile = tileFromId(id)
-            tile.position!.x = index % 10
-            tile.position!.y = Math.floor(index / 10)
-            return tile
+        getHand(gameId).then(data => setTiles((tiles) => ({
+            ...tiles,
+            'hand': data.map((id, index) => {
+                const tile = tileFromId(id)
+                tile.position!.x = index % 10
+                tile.position!.y = Math.floor(index / 10)
+                return tile
+            }),
         })))
     }, [])
 
     useEffect(() => {
-        setGridSize(calculateGridSize(tiles))
-    }, [tiles])
-
-    useEffect(() => {
         const canvas = canvasRef.current!;
-        const rect = canvas.getBoundingClientRect();
-        canvas.width = rect.width;
-        canvas.height = rect.height;
-        setHandArea({
-            size: {
-                width: canvas.width,
-                height: 2 * handCellSize,
-            },
-            location: {
-                x: 0,
-                y: canvas.height - 2 * handCellSize,
-            }
-        })
-    }, [handCellSize])
 
-
-    useEffect(() => {
-        const canvas = canvasRef.current!;
-        const ctx = canvas.getContext("2d")!;
-        let dragging: Tile | null = null;
+        const areas = getAreas(canvas, tiles)
 
         const resize = () => {
             const rect = canvas.getBoundingClientRect();
             canvas.width = rect.width;
             canvas.height = rect.height;
-            setCellSize(Math.min(canvas.width / (gridSize?.columns ?? 1), canvas.height / (gridSize?.rows ?? 1)))
-            setHandCellSize(Math.min(canvas.width / 10, canvas.height / 2))
-            draw();
-        };
-
-        function reposition(tiles: Tile[], newTile: Tile) {
-            const blockingTile = tiles.find((tile) => {
-                return tile.position!.x == newTile.position!.x && tile.position!.y == newTile.position!.y && !isTileMoving.get(tile.id)
-            }) ?? null
-            isTileMoving.set(newTile.id, false);
-            setIsTileMoving(isTileMoving)
-            if (blockingTile) {
-                blockingTile.position!.x += 1;
-                isTileMoving.set(blockingTile.id, true);
-                setIsTileMoving(isTileMoving)
-                reposition(tiles, blockingTile)
-            }
-            setTiles([...tiles])
-        }
-
-        function getColor(tile: Tile): string {
-            if (tile.color === Color.Red) {
-                return "#e53935";
-            } else if (tile.color === Color.Black) {
-                return "#363635";
-            } else if (tile.color === Color.Yellow) {
-                return "#fffd82";
-            } else if (tile.color === Color.Blue) {
-                return "#3c91e6";
-            }
-            return "#cccccc";
-        }
-
-        function getText(tile: Tile): string {
-            if (tile.isJoker) {
-                return "J"
-            }
-            return String(tile.value);
-        }
-
-        function drawHand() {
-            ctx.fillStyle = '#222'
-            ctx.fillRect(handArea.location.x, handArea.location.y, handArea.size.width, handArea.size.height)
-            for (const tile of hand) {
-                const x = tile.position!.x * handCellSize + handArea.location.x;
-                const y = tile.position!.y * handCellSize + handArea.location.y;
-                drawTile(ctx, tile, x, y, handCellSize)
-            }
-        }
-
-        function drawTile(ctx: CanvasRenderingContext2D, tile: Tile, x: number, y: number, size: number) {
-            const borderWidth = size * 0.05;
-            const borderRadius = size * 0.2;
-            ctx.beginPath();
-            roundedSquarePath(ctx, x, y, borderRadius, size);
-
-            ctx.fillStyle = getColor(tile);
-            ctx.fill();
-
-            ctx.lineWidth = borderWidth;
-            ctx.strokeStyle = '#000';
-            ctx.stroke();
-
-            const fontSize = size * 0.6;
-            ctx.font = `900 ${fontSize}px 'Inter', sans-serif`;
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-
-            const cx = x + 0.5 * size;
-            const cy = y + 0.5 * size + size * 0.05;
-
-            ctx.lineWidth = Math.max(3, Math.floor(fontSize * 0.20));
-            ctx.strokeStyle = '#000';
-            ctx.strokeText(getText(tile), cx, cy);
-
-            ctx.fillStyle = '#fff';
-            ctx.fillText(getText(tile), cx, cy);
-        }
-
-        function roundedSquarePath(ctx: CanvasRenderingContext2D, x: number, y: number, radius: number, size: number) {
-            const r = Math.min(radius, size / 2, size / 2);
-            ctx.moveTo(x + r, y);
-            ctx.arcTo(x + size, y, x + size, y + size, r);
-            ctx.arcTo(x + size, y + size, x, y + size, r);
-            ctx.arcTo(x, y + size, x, y, r);
-            ctx.arcTo(x, y, x + size, y, r);
-            ctx.closePath();
-        }
-
-        const draw = () => {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            drawHand()
-            for (const tile of tiles) {
-                const x = tile.position!.x - gridSize.offset.x;
-                const y = tile.position!.y - gridSize.offset.y;
-                drawTile(ctx, tile, x * cellSize, y * cellSize, cellSize)
-            }
         };
 
         const onMouseDown = (e: MouseEvent) => {
-            const rect = canvas.getBoundingClientRect();
-            const x = Math.floor((e.clientX - rect.left) / cellSize) + gridSize.offset.x;
-            const y = Math.floor((e.clientY - rect.top) / cellSize) + gridSize.offset.y;
-            dragging = tiles.find(
-                (t) => x == t.position!.x && y == t.position!.y
-            ) ?? null;
-            if (dragging) {
-                isTileMoving.set(dragging.id, true);
-                setIsTileMoving(isTileMoving)
-            }
+            const gridPosition = getGridPosition(e.clientX, e.clientY, areas)
+            if (!gridPosition) return
+            const targetTile = getTileFromGridPosition(gridPosition, tiles)
+            if (!targetTile) return
+            setDragging(targetTile)
+            setTiles((tiles) => ({
+                'hand': tiles.hand.filter(tile => tile.id != targetTile.id),
+                'table': tiles.table.filter(tile => tile.id != targetTile.id)
+            }))
+            setDraggingPosition({
+                x: e.clientX,
+                y: e.clientY,
+            })
         };
 
         const onMouseMove = (e: MouseEvent) => {
             if (!dragging) return;
-            const rect = canvas.getBoundingClientRect();
-            dragging.position!.x = ((e.clientX - rect.left) / cellSize) - 0.5 + gridSize.offset.x;
-            dragging.position!.y = ((e.clientY - rect.top) / cellSize) - 0.5 + gridSize.offset.y;
-            draw();
+            setDraggingPosition({
+                x: e.clientX,
+                y: e.clientY,
+            })
         };
 
         const onMouseUp = (e: MouseEvent) => {
             if (!dragging) return;
-            const rect = canvas.getBoundingClientRect();
-            dragging.position!.x = Math.floor((e.clientX - rect.left) / cellSize) + gridSize.offset.x;
-            dragging.position!.y = Math.floor((e.clientY - rect.top) / cellSize) + gridSize.offset.y;
-            reposition(tiles, dragging);
-            dragging = null;
-            draw();
+            const gridPosition = getGridPosition(e.clientX, e.clientY, areas)
+            if (!gridPosition) return
+            setTiles((tiles) => ({
+                ...tiles,
+                [gridPosition.areaType]: [...tiles[gridPosition.areaType], {
+                    ...dragging,
+                    position: gridPosition.position,
+                }]
+            }))
+            setDragging(undefined)
         };
 
         window.addEventListener("resize", resize);
@@ -233,7 +112,55 @@ export default function Board({ gameId }: Props) {
             window.removeEventListener("mousemove", onMouseMove);
             window.removeEventListener("mouseup", onMouseUp);
         };
-    }, [hand, tiles, gridSize, cellSize]);
+    }, [tiles, dragging]);
+
+    useEffect(() => {
+        fetch(`/api/game/${gameId}/commit`, {
+            method: 'POST',
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(tiles),
+        })
+    }, [tiles, gameId])
+
+    useEffect(() => {
+        const canvas = canvasRef.current!;
+        const ctx = canvas.getContext("2d")!;
+
+        const areas = getAreas(canvas, tiles)
+
+        function drawHand() {
+            const cellSize = getCellSize(areas.hand)
+            ctx.fillStyle = '#222'
+            ctx.fillRect(areas.hand.location.x, areas.hand.location.y, areas.hand.size.width, areas.hand.size.height)
+            for (const tile of tiles.hand) {
+                const x = tile.position!.x * cellSize + areas.hand.location.x;
+                const y = tile.position!.y * cellSize + areas.hand.location.y;
+                drawTile(ctx, tile, x, y, cellSize)
+            }
+        }
+
+        function drawTable() {
+            const cellSize = getCellSize(areas.table)
+            for (const tile of tiles.table) {
+                const x = tile.position!.x;
+                const y = tile.position!.y;
+                drawTile(ctx, tile, x * cellSize, y * cellSize, cellSize)
+            }
+        }
+
+        function drawDragging() {
+            if (!dragging || !draggingPosition) return
+            const area = [areas.hand, areas.table].find((area) => isInArea(draggingPosition.x, draggingPosition.y, area))
+            if (!area) return
+            const cellSize = getCellSize(area)
+            drawTile(ctx, dragging, draggingPosition.x - cellSize / 2, draggingPosition.y - cellSize / 2, cellSize)
+        }
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        drawHand()
+        drawTable()
+        drawDragging()
+    }, [tiles, dragging, draggingPosition, canvasRef.current])
 
     return (
         <canvas
@@ -241,4 +168,137 @@ export default function Board({ gameId }: Props) {
             style={{ border: "1px solid #ccc", width: "100vw", height: "100vh", backgroundColor: "#0B6623" }}
         />
     )
+}
+
+function drawTile(ctx: CanvasRenderingContext2D, tile: Tile, x: number, y: number, size: number) {
+    const borderWidth = size * 0.05;
+    const borderRadius = size * 0.2;
+    ctx.beginPath();
+    roundedSquarePath(ctx, x, y, borderRadius, size);
+
+    ctx.fillStyle = getColor(tile);
+    ctx.fill();
+
+    ctx.lineWidth = borderWidth;
+    ctx.strokeStyle = '#000';
+    ctx.stroke();
+
+    const fontSize = size * 0.6;
+    ctx.font = `900 ${fontSize}px 'Inter', sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    const cx = x + 0.5 * size;
+    const cy = y + 0.5 * size + size * 0.05;
+
+    ctx.lineWidth = Math.max(3, Math.floor(fontSize * 0.20));
+    ctx.strokeStyle = '#000';
+    ctx.strokeText(getText(tile), cx, cy);
+
+    ctx.fillStyle = '#fff';
+    ctx.fillText(getText(tile), cx, cy);
+}
+
+function roundedSquarePath(ctx: CanvasRenderingContext2D, x: number, y: number, radius: number, size: number) {
+    const r = Math.min(radius, size / 2, size / 2);
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + size, y, x + size, y + size, r);
+    ctx.arcTo(x + size, y + size, x, y + size, r);
+    ctx.arcTo(x, y + size, x, y, r);
+    ctx.arcTo(x, y, x + size, y, r);
+    ctx.closePath();
+}
+
+function getColor(tile: Tile): string {
+    if (tile.color === Color.Red) {
+        return "#e53935";
+    } else if (tile.color === Color.Black) {
+        return "#363635";
+    } else if (tile.color === Color.Yellow) {
+        return "#fffd82";
+    } else if (tile.color === Color.Blue) {
+        return "#3c91e6";
+    }
+    return "#cccccc";
+}
+
+function getText(tile: Tile): string {
+    if (tile.isJoker) {
+        return "J"
+    }
+    return String(tile.value);
+}
+
+function calculateGridShape(tiles: Tile[], minShape: GridShape = { rows: 5, columns: 10 }): GridShape {
+    if (tiles.length == 0) return minShape
+    let minX = tiles[0].position!.x, maxX = tiles[0].position!.x, minY = tiles[0].position!.y, maxY = tiles[0].position!.y;
+    tiles.forEach((tile) => {
+        minX = Math.min(tile.position!.x, minX) 
+        maxX = Math.max(tile.position!.x, maxX) 
+        minY = Math.min(tile.position!.y, minY) 
+        maxY = Math.max(tile.position!.y, maxY) 
+    })
+    return {
+        rows: Math.max(maxY - minY + 1, minShape.rows),
+        columns: Math.max(maxX - minX + 1, minShape.columns),
+    }
+}
+
+function getCellSize(area: Area): number {
+    return Math.min(Math.floor(area.size.width / area.grid.columns), Math.floor(area.size.height / area.grid.rows))
+}
+
+function getTileFromGridPosition(position: GridPosition, tiles: Record<AreaType, Tile[]>) {
+    const tileSet = tiles[position.areaType]
+    return tileSet.find(tile => tile.position!.x == position.position.x && tile.position!.y == position.position.y)
+}
+
+function getGridPosition(x: number, y: number, areas: Record<AreaType, Area>) {
+    const area = Object.values(areas).find((area) => isInArea(x, y, area))
+    if (area) return getGridPositionInArea(x, y, area)
+}
+
+function getGridPositionInArea(x: number, y: number, area: Area): GridPosition {
+    const cellSize = getCellSize(area)
+    return {
+        position: {
+            x: Math.floor((x - area.location.x) / cellSize),
+            y: Math.floor((y - area.location.y) / cellSize),
+        },
+        areaType: area.type,
+    }
+}
+
+function isInArea(x: number, y: number, area: Area) {
+    return x >= area.location.x && x <= area.location.x + area.size.width && y >= area.location.y && y <= area.location.y + area.size.height
+}
+
+function getAreas(canvas: HTMLCanvasElement, tiles: Record<AreaType, Tile[]>): Record<AreaType, Area> {
+    const handAreaHeight = Math.min(200, canvas.height * 0.2);
+    return {
+        'hand': {
+            type: 'hand' as AreaType,
+            size: {
+                width: canvas.width,
+                height: handAreaHeight,
+            },
+            location: {
+                x: 0,
+                y: canvas.height - handAreaHeight,
+            },
+            grid: calculateGridShape(tiles.hand, { rows: 2, columns: 10 }),
+        },
+        'table': {
+            type: 'table' as AreaType,
+            size: {
+                width: canvas.width,
+                height: canvas.height - handAreaHeight,
+            },
+            location: {
+                x: 0,
+                y: 0,
+            },
+            grid: calculateGridShape(tiles.table),
+        }
+    }
 }

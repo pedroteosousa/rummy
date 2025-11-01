@@ -4,6 +4,7 @@
 
 import * as $_404 from "./routes/_404.tsx";
 import * as $_app from "./routes/_app.tsx";
+import * as $api_game_id_commit from "./routes/api/game/[id]/commit.ts";
 import * as $game_id_ from "./routes/game/[id].tsx";
 import * as $index from "./routes/index.tsx";
 import * as $lobby_id_ from "./routes/lobby/[id].tsx";
@@ -20,6 +21,7 @@ const manifest = {
   routes: {
     "./routes/_404.tsx": $_404,
     "./routes/_app.tsx": $_app,
+    "./routes/api/game/[id]/commit.ts": $api_game_id_commit,
     "./routes/game/[id].tsx": $game_id_,
     "./routes/index.tsx": $index,
     "./routes/lobby/[id].tsx": $lobby_id_,

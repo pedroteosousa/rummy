@@ -1,6 +1,6 @@
 import { useEffect, useState } from "preact/hooks";
-import { getLobbies, createLobby, joinLobby } from '../../utils/supabaseClient.ts'
-import { Lobby } from "../../utils/types.ts";
+import { getLobbies, createLobby, joinLobby } from '../../lib/supabaseClient.ts'
+import { Lobby } from "../../lib/types.ts";
 import LobbyCard from "./LobbyCard.tsx";
 import Button from "../Button.tsx";
 

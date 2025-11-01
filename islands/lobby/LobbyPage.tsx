@@ -1,6 +1,6 @@
 import { useEffect, useState } from "preact/hooks"
-import { getLobby, startGame } from "../../utils/supabaseClient.ts";
-import { Lobby } from "../../utils/types.ts";
+import { getLobby, startGame } from "../../lib/supabaseClient.ts";
+import { Lobby } from "../../lib/types.ts";
 import Button from "../Button.tsx";
 
 export interface Props {

@@ -1,4 +1,4 @@
-import { Lobby } from "../../utils/types.ts";
+import { Lobby } from "../../lib/types.ts";
 
 export interface Props {
     lobby: Lobby
