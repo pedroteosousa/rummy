@@ -30,9 +30,9 @@ export interface Player {
 
 export interface Tile {
     id: string
+    position: Position
     value?: number
     color?: Color
-    position?: Position
     isJoker?: boolean
 }
 

@@ -43,8 +43,8 @@ export default function Board({ gameId }: Props) {
             ...tiles,
             'hand': data.map((id, index) => {
                 const tile = tileFromId(id)
-                tile.position!.x = index % 10
-                tile.position!.y = Math.floor(index / 10)
+                tile.position.x = index % 10
+                tile.position.y = Math.floor(index / 10)
                 return tile
             }),
         })))
@@ -118,7 +118,10 @@ export default function Board({ gameId }: Props) {
         fetch(`/api/game/${gameId}/commit`, {
             method: 'POST',
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(tiles),
+            body: JSON.stringify({
+                gameId,
+                ...tiles,
+            }),
         })
     }, [tiles, gameId])
 
@@ -133,8 +136,8 @@ export default function Board({ gameId }: Props) {
             ctx.fillStyle = '#222'
             ctx.fillRect(areas.hand.location.x, areas.hand.location.y, areas.hand.size.width, areas.hand.size.height)
             for (const tile of tiles.hand) {
-                const x = tile.position!.x * cellSize + areas.hand.location.x;
-                const y = tile.position!.y * cellSize + areas.hand.location.y;
+                const x = tile.position.x * cellSize + areas.hand.location.x;
+                const y = tile.position.y * cellSize + areas.hand.location.y;
                 drawTile(ctx, tile, x, y, cellSize)
             }
         }
@@ -142,8 +145,8 @@ export default function Board({ gameId }: Props) {
         function drawTable() {
             const cellSize = getCellSize(areas.table)
             for (const tile of tiles.table) {
-                const x = tile.position!.x;
-                const y = tile.position!.y;
+                const x = tile.position.x;
+                const y = tile.position.y;
                 drawTile(ctx, tile, x * cellSize, y * cellSize, cellSize)
             }
         }
@@ -231,12 +234,12 @@ function getText(tile: Tile): string {
 
 function calculateGridShape(tiles: Tile[], minShape: GridShape = { rows: 5, columns: 10 }): GridShape {
     if (tiles.length == 0) return minShape
-    let minX = tiles[0].position!.x, maxX = tiles[0].position!.x, minY = tiles[0].position!.y, maxY = tiles[0].position!.y;
+    let minX = tiles[0].position.x, maxX = tiles[0].position.x, minY = tiles[0].position.y, maxY = tiles[0].position.y;
     tiles.forEach((tile) => {
-        minX = Math.min(tile.position!.x, minX) 
-        maxX = Math.max(tile.position!.x, maxX) 
-        minY = Math.min(tile.position!.y, minY) 
-        maxY = Math.max(tile.position!.y, maxY) 
+        minX = Math.min(tile.position.x, minX) 
+        maxX = Math.max(tile.position.x, maxX) 
+        minY = Math.min(tile.position.y, minY) 
+        maxY = Math.max(tile.position.y, maxY) 
     })
     return {
         rows: Math.max(maxY - minY + 1, minShape.rows),
@@ -250,7 +253,7 @@ function getCellSize(area: Area): number {
 
 function getTileFromGridPosition(position: GridPosition, tiles: Record<AreaType, Tile[]>) {
     const tileSet = tiles[position.areaType]
-    return tileSet.find(tile => tile.position!.x == position.position.x && tile.position!.y == position.position.y)
+    return tileSet.find(tile => tile.position.x == position.position.x && tile.position.y == position.position.y)
 }
 
 function getGridPosition(x: number, y: number, areas: Record<AreaType, Area>) {

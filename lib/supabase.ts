@@ -71,6 +71,41 @@ export type Database = {
           },
         ]
       }
+      game_history: {
+        Row: {
+          action: string | null
+          created_at: string
+          game_id: string | null
+          id: string
+          table: Json | null
+          turn: number | null
+        }
+        Insert: {
+          action?: string | null
+          created_at?: string
+          game_id?: string | null
+          id?: string
+          table?: Json | null
+          turn?: number | null
+        }
+        Update: {
+          action?: string | null
+          created_at?: string
+          game_id?: string | null
+          id?: string
+          table?: Json | null
+          turn?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "game_history_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       game_users: {
         Row: {
           created_at: string
@@ -114,29 +149,23 @@ export type Database = {
         Row: {
           active: boolean | null
           created_at: string
-          current_turn: number | null
           id: string
           lobby_id: string | null
           options: Json | null
-          table: Json | null
         }
         Insert: {
           active?: boolean | null
           created_at?: string
-          current_turn?: number | null
           id?: string
           lobby_id?: string | null
           options?: Json | null
-          table?: Json | null
         }
         Update: {
           active?: boolean | null
           created_at?: string
-          current_turn?: number | null
           id?: string
           lobby_id?: string | null
           options?: Json | null
-          table?: Json | null
         }
         Relationships: [
           {
