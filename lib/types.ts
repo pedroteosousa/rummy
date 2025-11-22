@@ -1,3 +1,6 @@
+import { User as SupabaseUser } from "npm:@supabase/supabase-js@2.77.0";
+import { FreshContext } from "$fresh/server.ts"
+
 export interface User {
     id: string
     username: string
@@ -49,6 +52,8 @@ export interface Draw {
     tile: Tile
 }
 
+type ActionType = 'move' | 'draw'
+
 export type Action = Draw | Move
 
 export interface Turn {
@@ -77,3 +82,9 @@ export interface TurnTimerOptions {
     time: number
     increment?: number
 }
+
+export type Context = {
+    state: {
+        user?: SupabaseUser
+    }
+} & FreshContext

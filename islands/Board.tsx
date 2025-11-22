@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from "preact/hooks";
 import { Position, Tile, Color } from "../lib/types.ts";
-import { getHand } from "../lib/supabaseClient.ts";
-import { tileFromId } from "../lib/helper.ts";
+import { supabase } from "../lib/supabase/supabaseClient.ts";
+import { getCurrentTable, getHand, subscribeToGameTable } from "../lib/supabase/supabase.ts"
+import { isValidTable, tileFromId } from "../lib/helper.ts";
+import useGame from "../hooks/useGame.ts";
 
 interface GridShape {
     rows: number
@@ -31,24 +33,9 @@ export interface Props {
 
 export default function Board({ gameId }: Props) {
     const canvasRef = useRef<HTMLCanvasElement>(null)
-    const [tiles, setTiles] = useState<Record<AreaType, Tile[]>>({
-        'hand': [],
-        'table': [],
-    })
+    const { tiles, updateHand, updateTable, commitTable, drawTile: drawNewTile } = useGame(gameId)
     const [dragging, setDragging] = useState<Tile>()
     const [draggingPosition, setDraggingPosition] = useState<Position>()
-
-    useEffect(() => {
-        getHand(gameId).then(data => setTiles((tiles) => ({
-            ...tiles,
-            'hand': data.map((id, index) => {
-                const tile = tileFromId(id)
-                tile.position.x = index % 10
-                tile.position.y = Math.floor(index / 10)
-                return tile
-            }),
-        })))
-    }, [])
 
     useEffect(() => {
         const canvas = canvasRef.current!;
@@ -67,10 +54,8 @@ export default function Board({ gameId }: Props) {
             const targetTile = getTileFromGridPosition(gridPosition, tiles)
             if (!targetTile) return
             setDragging(targetTile)
-            setTiles((tiles) => ({
-                'hand': tiles.hand.filter(tile => tile.id != targetTile.id),
-                'table': tiles.table.filter(tile => tile.id != targetTile.id)
-            }))
+            updateHand(tiles.hand.filter(tile => tile.id != targetTile.id))
+            updateTable(tiles.table.filter(tile => tile.id != targetTile.id))
             setDraggingPosition({
                 x: e.clientX,
                 y: e.clientY,
@@ -89,13 +74,15 @@ export default function Board({ gameId }: Props) {
             if (!dragging) return;
             const gridPosition = getGridPosition(e.clientX, e.clientY, areas)
             if (!gridPosition) return
-            setTiles((tiles) => ({
-                ...tiles,
-                [gridPosition.areaType]: [...tiles[gridPosition.areaType], {
-                    ...dragging,
-                    position: gridPosition.position,
-                }]
-            }))
+            const newTiles = [...tiles[gridPosition.areaType], {
+                ...dragging,
+                position: gridPosition.position,
+            }]
+            if (gridPosition.areaType == 'hand') {
+                updateHand(newTiles)
+            } else {
+                updateTable(newTiles)
+            }
             setDragging(undefined)
         };
 
@@ -112,18 +99,7 @@ export default function Board({ gameId }: Props) {
             window.removeEventListener("mousemove", onMouseMove);
             window.removeEventListener("mouseup", onMouseUp);
         };
-    }, [tiles, dragging]);
-
-    useEffect(() => {
-        fetch(`/api/game/${gameId}/commit`, {
-            method: 'POST',
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                gameId,
-                ...tiles,
-            }),
-        })
-    }, [tiles, gameId])
+    }, [tiles, dragging, updateHand, updateTable]);
 
     useEffect(() => {
         const canvas = canvasRef.current!;
@@ -166,10 +142,31 @@ export default function Board({ gameId }: Props) {
     }, [tiles, dragging, draggingPosition, canvasRef.current])
 
     return (
-        <canvas
-            ref={canvasRef}
-            style={{ border: "1px solid #ccc", width: "100vw", height: "100vh", backgroundColor: "#0B6623" }}
-        />
+        <div>
+            <canvas
+                ref={canvasRef}
+                style={{ border: "1px solid #ccc", width: "100vw", height: "100vh", backgroundColor: "#0B6623" }}
+            />
+            <button
+                onClick={() => {
+                    if (!isValidTable(tiles.table)) drawNewTile()
+                    else commitTable(tiles.table)
+                }}
+                style={{
+                    position: "absolute",
+                    right: "16px",
+                    bottom: "16px",
+                    padding: "12px 16px",
+                    background: "#fff",
+                    border: "2px solid black",
+                    borderRadius: "8px",
+                    cursor: "pointer",
+                    fontWeight: "bold",
+                }}
+            >
+                Commit / Draw
+            </button>
+        </div>
     )
 }
 

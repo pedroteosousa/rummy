@@ -1,5 +1,6 @@
 import { useEffect, useState } from "preact/hooks"
-import { getLobby, startGame } from "../../lib/supabaseClient.ts";
+import { supabase } from "../../lib/supabase/supabaseClient.ts";
+import { getLobby, startGame } from "../../lib/supabase/supabase.ts";
 import { Lobby } from "../../lib/types.ts";
 import Button from "../Button.tsx";
 
@@ -10,7 +11,7 @@ export interface Props {
 export default function LobbyPage({ id }: Props) {
     const [lobby, setLobby] = useState<Lobby | null>(null)
     useEffect(() => {
-        getLobby(id).then(data => setLobby(data)).catch(error => console.log(error))
+        getLobby(supabase, id).then(data => setLobby(data)).catch(error => console.log(error))
     }, [id])
 
     useEffect(() => {
@@ -22,7 +23,7 @@ export default function LobbyPage({ id }: Props) {
             <div>
                 { lobby?.players.map(player => (<PlayerCard id={player.id} username={player.username} isHost={player.isHost} />)) }
             </div>
-            <Button text="Start Game" onClick={() => startGame(id).then((gameId) => globalThis.window.location.href = `/game/${gameId}`)}/>
+            <Button text="Start Game" onClick={() => startGame(supabase, id).then((gameId) => globalThis.window.location.href = `/game/${gameId}`)}/>
         </div>
     )
 }

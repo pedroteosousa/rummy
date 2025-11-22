@@ -1,10 +1,8 @@
 import { PageProps } from "$fresh/server.ts";
-import Board from "../../islands/Board.tsx";
+import GamePage from "../../islands/GamePage.tsx";
 
 export default function GameBoard(props: PageProps) {
     return (
-        <div>
-            <Board gameId={props.params.id} />
-        </div>
+        <GamePage id={props.params.id} />
     )
 }

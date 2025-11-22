@@ -87,3 +87,9 @@ function comparePosition(position1: Position, position2: Position): number {
     if (position1.y != position2.y) return position1.y - position2.y
     return position1.x - position2.x
 }
+
+export function difference(A: string[], B: string[]) {
+    const AmB = A.filter(x => !B.includes(x))
+    const BmA = B.filter(x => !A.includes(x))
+    return { AmB, BmA }
+}

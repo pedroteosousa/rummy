@@ -4,13 +4,17 @@
 
 import * as $_404 from "./routes/_404.tsx";
 import * as $_app from "./routes/_app.tsx";
+import * as $api_middleware from "./routes/api/_middleware.ts";
 import * as $api_game_id_commit from "./routes/api/game/[id]/commit.ts";
+import * as $api_game_id_draw from "./routes/api/game/[id]/draw.ts";
+import * as $api_game_id_update_table from "./routes/api/game/[id]/update_table.ts";
 import * as $game_id_ from "./routes/game/[id].tsx";
 import * as $index from "./routes/index.tsx";
 import * as $lobby_id_ from "./routes/lobby/[id].tsx";
 import * as $login from "./routes/login.tsx";
 import * as $Board from "./islands/Board.tsx";
 import * as $Button from "./islands/Button.tsx";
+import * as $GamePage from "./islands/GamePage.tsx";
 import * as $Login from "./islands/Login.tsx";
 import * as $lobby_Lobbies from "./islands/lobby/Lobbies.tsx";
 import * as $lobby_LobbyCard from "./islands/lobby/LobbyCard.tsx";
@@ -21,7 +25,10 @@ const manifest = {
   routes: {
     "./routes/_404.tsx": $_404,
     "./routes/_app.tsx": $_app,
+    "./routes/api/_middleware.ts": $api_middleware,
     "./routes/api/game/[id]/commit.ts": $api_game_id_commit,
+    "./routes/api/game/[id]/draw.ts": $api_game_id_draw,
+    "./routes/api/game/[id]/update_table.ts": $api_game_id_update_table,
     "./routes/game/[id].tsx": $game_id_,
     "./routes/index.tsx": $index,
     "./routes/lobby/[id].tsx": $lobby_id_,
@@ -30,6 +37,7 @@ const manifest = {
   islands: {
     "./islands/Board.tsx": $Board,
     "./islands/Button.tsx": $Button,
+    "./islands/GamePage.tsx": $GamePage,
     "./islands/Login.tsx": $Login,
     "./islands/lobby/Lobbies.tsx": $lobby_Lobbies,
     "./islands/lobby/LobbyCard.tsx": $lobby_LobbyCard,

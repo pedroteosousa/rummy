@@ -73,28 +73,31 @@ export type Database = {
       }
       game_history: {
         Row: {
-          action: string | null
+          action_type: string | null
           created_at: string
-          game_id: string | null
-          id: string
-          table: Json | null
-          turn: number | null
+          game_id: string
+          ongoing: boolean
+          table: Json
+          turn: number
+          update_id: string | null
         }
         Insert: {
-          action?: string | null
+          action_type?: string | null
           created_at?: string
-          game_id?: string | null
-          id?: string
-          table?: Json | null
-          turn?: number | null
+          game_id?: string
+          ongoing?: boolean
+          table: Json
+          turn: number
+          update_id?: string | null
         }
         Update: {
-          action?: string | null
+          action_type?: string | null
           created_at?: string
-          game_id?: string | null
-          id?: string
-          table?: Json | null
-          turn?: number | null
+          game_id?: string
+          ongoing?: boolean
+          table?: Json
+          turn?: number
+          update_id?: string | null
         }
         Relationships: [
           {

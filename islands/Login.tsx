@@ -1,5 +1,5 @@
 import { useState } from "preact/hooks";
-import { supabase } from "../lib/supabaseClient.ts";
+import { supabase } from "../lib/supabase/supabaseClient.ts";
 import LoginForm from "../components/LoginForm.tsx";
 
 export default function LoginIsland() {
